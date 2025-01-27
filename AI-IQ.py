@@ -5,11 +5,19 @@ import os
 from datetime import datetime
 
 ###########################
-# CONFIGURATION & GLOBALS #
+# CONFIG & GLOBALS
 ###########################
 
-# Scale labels, inverted: "Strongly Agree" first -> "Strongly Disagree" last
-# We'll still map them to numeric in ascending order (5 -> 1).
+# Instead of a hard-coded password, we read from st.secrets.
+# In your secrets.toml (local) or Streamlit Cloud secrets, you have:
+#   [general]
+#   password = "NeuZeit"
+
+# If the user hasn't set "general.password" in secrets, this will raise a KeyError.
+# You can use a get() with default if you want a fallback password.
+PASSWORD = st.secrets["general"]["password"]  
+
+# Scale labels (Strongly Agree -> Strongly Disagree) mapped to 5..1
 SCALE_LABELS = ["Strongly Agree", "Agree", "Neutral", "Disagree", "Strongly Disagree"]
 SCALE_MAPPING = {
     "Strongly Agree": 5,
@@ -19,7 +27,7 @@ SCALE_MAPPING = {
     "Strongly Disagree": 1
 }
 
-# Each dimension includes numeric questions plus an optional text prompt
+# Example dimensions + questions + optional text prompt
 survey_questions = {
     "Business Domain Understanding": {
         "questions": [
@@ -72,46 +80,33 @@ survey_questions = {
 }
 
 CSV_FILE = "survey_responses.csv"
-LOGO_FILE = "neuzeit_logo.png"  # Adjust if your file name/path differs
+LOGO_FILE = "neuzeit_logo.png"
 
 ##########################
-# DATA STORAGE FUNCTIONS #
+# DATA STORAGE FUNCTIONS
 ##########################
 
 def load_data(csv_file=CSV_FILE):
-    """
-    Load survey data from a CSV file.
-    Returns an empty DataFrame with predefined columns if not found.
-    """
     if os.path.exists(csv_file):
         return pd.read_csv(csv_file)
     else:
-        # Basic columns: name, email, timestamp, AI_IQ
         columns = ["name", "email", "timestamp", "AI_IQ"]
-        # One numeric score per dimension
         for dim in survey_questions.keys():
             columns.append(dim + "_score")
-        # One text response per dimension
         for dim in survey_questions.keys():
             columns.append(dim + "_text_response")
         return pd.DataFrame(columns=columns)
 
 def save_response(name, email, dimension_scores, dimension_texts, ai_iq, csv_file=CSV_FILE):
-    """
-    Append a new survey result (numeric + text) to the CSV file.
-    """
     df = load_data(csv_file)
-    
     row_dict = {
         "name": name,
         "email": email,
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "AI_IQ": ai_iq
     }
-    # Add dimension scores
     for dim, score in dimension_scores.items():
         row_dict[dim + "_score"] = score
-    # Add text responses
     for dim, txt in dimension_texts.items():
         row_dict[dim + "_text_response"] = txt
 
@@ -120,38 +115,29 @@ def save_response(name, email, dimension_scores, dimension_texts, ai_iq, csv_fil
     df.to_csv(csv_file, index=False)
 
 ##########################
-# CHART & SCORING LOGIC  #
+# CHART & SCORING LOGIC
 ##########################
 
 def calculate_dimension_score(numeric_answers):
-    """
-    Given a list of numeric answers for a dimension,
-    return the average (rounded to 2 decimals).
-    """
     return round(sum(numeric_answers) / len(numeric_answers), 2)
 
 def create_swimlane_chart(dimension_scores):
-    """
-    Creates a Plotly figure with a horizontal lane for each dimension (1..6).
-    Each lane: dimension score (1–5). A line connects them in the dimension order.
-    We embed the NeuZeit logo in the chart as well.
-    """
     dimensions = list(dimension_scores.keys())
     values = list(dimension_scores.values())
 
     fig = go.Figure()
     lane_positions = list(range(1, len(dimensions) + 1))
 
-    # Draw faint horizontal lines for each dimension
+    # Draw horizontal lines
     for y in lane_positions:
         fig.add_shape(
             type='line',
-            x0=1, x1=5,  # x range for scores (1 to 5)
+            x0=1, x1=5,
             y0=y, y1=y,
             line=dict(color='lightgray', width=2, dash='dot')
         )
 
-    # Add circles with dimension text
+    # Plot circles + text
     for i, dim in enumerate(dimensions):
         fig.add_trace(go.Scatter(
             x=[values[i]],
@@ -163,7 +149,7 @@ def create_swimlane_chart(dimension_scores):
             showlegend=False
         ))
 
-    # Connect them with a line
+    # Connect with a line
     fig.add_trace(go.Scatter(
         x=values,
         y=lane_positions,
@@ -172,19 +158,18 @@ def create_swimlane_chart(dimension_scores):
         showlegend=False
     ))
 
-    # Add the NeuZeit logo in the upper-right corner (if file exists).
+    # NeuZeit logo
     if os.path.exists(LOGO_FILE):
         fig.add_layout_image(
             dict(
                 source=LOGO_FILE,
                 xref="paper", yref="paper",
-                x=1.15, y=1.15,  # position top-right outside main chart
+                x=1.15, y=1.15,
                 sizex=0.25, sizey=0.25,
                 xanchor="right", yanchor="top"
             )
         )
-    
-    # Configure layout
+
     fig.update_layout(
         title="Dimension Scores (1–5)",
         xaxis=dict(range=[1, 5], title="Score"),
@@ -200,13 +185,13 @@ def create_swimlane_chart(dimension_scores):
     return fig
 
 ######################
-# MAIN STREAMLIT APP #
+# MAIN STREAMLIT APP
 ######################
 
 def main():
-    st.set_page_config(layout="wide")  # optional: wide layout
+    st.set_page_config(layout="wide")
 
-    # Display NeuZeit logo at top (if file exists)
+    # NeuZeit logo at top
     col1, col2 = st.columns([1,4])
     with col1:
         if os.path.exists(LOGO_FILE):
@@ -214,27 +199,24 @@ def main():
     with col2:
         st.title("AI Readiness (AI IQ) Survey")
 
-    # Create two tabs: "Take Survey" and "View Results"
+    # Two tabs
     tab1, tab2 = st.tabs(["Take Survey", "View Results"])
 
-    #########################
-    # Tab 1: Take the Survey
-    #########################
+    ##########
+    # Tab 1
+    ##########
     with tab1:
         st.subheader("User Information")
         name = st.text_input("Name")
         email = st.text_input("Email")
 
-        st.write("Please respond to each statement from **Strongly Agree** to **Strongly Disagree**, then add optional feedback.")
-        
+        st.write("Please respond from **Strongly Agree** to **Strongly Disagree**, then add optional feedback.")
         dimension_scores = {}
         dimension_texts = {}
 
-        # For each dimension, we show the numeric questions + 1 text question
         for dim, content in survey_questions.items():
             st.subheader(dim)
             numeric_answers = []
-            # Numeric questions
             for question in content["questions"]:
                 selected_label = st.radio(
                     label=question,
@@ -243,24 +225,22 @@ def main():
                 )
                 numeric_value = SCALE_MAPPING[selected_label]
                 numeric_answers.append(numeric_value)
-            
-            # Calculate score for the dimension
+
+            # dimension score
             dim_score = calculate_dimension_score(numeric_answers)
             dimension_scores[dim] = dim_score
 
-            # Optional text
+            # optional text
             text_label = content["text"]
             text_response = st.text_area(text_label, value="", height=80)
             dimension_texts[dim] = text_response
 
         if st.button("Calculate AI IQ & Submit"):
-            # Final AI IQ = average of dimension scores
             all_scores = list(dimension_scores.values())
             ai_iq = round(sum(all_scores) / len(all_scores), 2)
 
             st.write("### Results")
             st.write(f"**Your AI IQ Score:** {ai_iq} (out of 5)")
-
             fig = create_swimlane_chart(dimension_scores)
             st.plotly_chart(fig, use_container_width=True)
 
@@ -270,56 +250,56 @@ def main():
             else:
                 st.warning("Provide both name and email if you want your results saved.")
 
-    ###############################
-    # Tab 2: View All Submissions
-    ###############################
+    ##########
+    # Tab 2
+    ##########
     with tab2:
-        st.subheader("All Survey Submissions")
-        df = load_data()
-        if df.empty:
-            st.write("No submissions yet.")
-        else:
-            st.dataframe(df)  # show master table
+        entered_password = st.text_input("Enter password to view results", type="password")
+        if entered_password == PASSWORD:
+            st.success("Access granted. Here are all submissions.")
 
-            st.write("### Show/Hide Individual Submissions")
-            for i, row in df.iterrows():
-                # Create a checkbox to show/hide
-                show_row = st.checkbox(
-                    f"{i+1}) {row['name']} (AI IQ: {row['AI_IQ']})",
-                    value=False,
-                    key=f"submission_{i}"
-                )
-                if show_row:
-                    # Build dimension scores from row
-                    row_scores = {}
-                    row_texts = {}
-                    for dim in survey_questions.keys():
-                        row_scores[dim] = row[f"{dim}_score"]
-                        text_col = f"{dim}_text_response"
-                        row_texts[dim] = row[text_col] if text_col in row else ""
+            df = load_data()
+            if df.empty:
+                st.write("No submissions yet.")
+            else:
+                st.dataframe(df)
 
-                    # Display user info
-                    st.markdown(f"**Name:** {row['name']}")
-                    st.markdown(f"**Email:** {row['email']}")
-                    st.markdown(f"**Timestamp:** {row['timestamp']}")
-                    st.markdown(f"**AI IQ:** {row['AI_IQ']}")
-
-                    # Show dimension chart
-                    fig_row = create_swimlane_chart(row_scores)
-                    st.plotly_chart(fig_row, use_container_width=True)
-
-                    # Display text responses
-                    with st.expander("Dimension Text Responses", expanded=False):
+                st.write("### Show/Hide Individual Submissions")
+                for i, row in df.iterrows():
+                    show_row = st.checkbox(
+                        f"{i+1}) {row['name']} (AI IQ: {row['AI_IQ']})",
+                        value=False,
+                        key=f"submission_{i}"
+                    )
+                    if show_row:
+                        row_scores = {}
+                        row_texts = {}
                         for dim in survey_questions.keys():
-                            txt = row_texts[dim]
-                            if isinstance(txt, str):
-                                if txt.strip():
-                                    st.markdown(f"**{dim}:** {txt}")
+                            row_scores[dim] = row[f"{dim}_score"]
+                            text_col = f"{dim}_text_response"
+                            row_texts[dim] = row[text_col] if text_col in row else ""
+
+                        st.markdown(f"**Name:** {row['name']}")
+                        st.markdown(f"**Email:** {row['email']}")
+                        st.markdown(f"**Timestamp:** {row['timestamp']}")
+                        st.markdown(f"**AI IQ:** {row['AI_IQ']}")
+
+                        fig_row = create_swimlane_chart(row_scores)
+                        st.plotly_chart(fig_row, use_container_width=True)
+
+                        with st.expander("Dimension Text Responses", expanded=False):
+                            for dim in survey_questions.keys():
+                                txt = row_texts[dim]
+                                if isinstance(txt, str):
+                                    if txt.strip():
+                                        st.markdown(f"**{dim}:** {txt}")
+                                    else:
+                                        st.markdown(f"**{dim}:** (No additional comments)")
                                 else:
-                                    st.markdown(f"**{dim}:** (No additional comments)")
-                            else:
-                                # txt is not a string, handle accordingly
-                                pass  # <-- Add 'pass' or any valid statement here
+                                    st.markdown(f"**{dim}:** (Not a string)")
+
+        else:
+            st.error("Access denied. Please enter the correct password.")
 
 if __name__ == "__main__":
     main()
