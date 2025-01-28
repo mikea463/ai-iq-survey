@@ -27,8 +27,59 @@ SCALE_MAPPING = {
     "Strongly Disagree": 1
 }
 
-# Example dimensions + questions + optional text prompt
 survey_questions = {
+    "Strategic Alignment and AI-Driven Innovation": {
+        "questions": [
+            "AI is integrated into our organization's strategic planning and supports our long-term business objectives.",
+            "AI initiatives have enabled our organization to innovate and enter new markets or create new revenue streams.",
+            "We effectively identify and prioritize AI use cases that deliver significant business value."
+        ],
+        "text": "Optional: Briefly describe any recent AI project that has significantly impacted your business strategy."
+    },
+    "Cultural Integration and Continuous Learning": {
+        "questions": [
+            "Our employees possess the necessary AI knowledge and collaborate effectively with AI systems.",
+            "Our organization promotes continuous learning and upskilling related to AI and emerging technologies.",
+            "Employees are empowered to leverage AI in their roles, and AI is viewed as a collaborative tool rather than a replacement."
+        ],
+        "text": "Optional: Describe any initiatives your organization has implemented to foster an AI-driven learning culture."
+    },
+    "Advanced AI Capabilities and Infrastructure": {
+        "questions": [
+            "Our AI technology stack (frameworks, libraries, DevOps/MLOps) is modern, well-integrated, and supports advanced AI initiatives.",
+            "Our AI infrastructure is scalable and adaptable to incorporate emerging AI advancements and handle increasing demands.",
+            "AI-driven automation is effectively implemented across key business functions to enhance operational efficiency."
+        ],
+        "text": "Optional: Note any significant technology gaps or constraints that impact your AI capabilities."
+    },
+    "Data Management and Utilization": {
+        "questions": [
+            "We maintain a unified data platform with minimal siloed data sources, ensuring data is accessible and integrated.",
+            "We have strong data governance and data quality practices that support reliable AI initiatives.",
+            "Our organization effectively leverages data analytics and insights to inform AI-driven decision-making processes."
+        ],
+        "text": "Optional: If data quality or availability is an issue, please explain."
+    },
+    "Ethics, Governance, and Responsible AI": {
+        "questions": [
+            "Ethical AI practices are integrated into the development, deployment, and management of our AI systems.",
+            "We have robust governance frameworks to monitor AI biases, ensure transparency, and maintain data privacy.",
+            "Our organization ensures accountability and compliance in AI-driven decision-making processes."
+        ],
+        "text": "Optional: Explain how your organization handles ethical considerations in AI projects."
+    },
+    "AI Deployment Patterns and Innovation": {
+        "questions": [
+            "We understand and effectively leverage common AI deployment patterns (e.g., batch processing, real-time analytics).",
+            "We have a clear approach for integrating AI models internally versus using external AI services.",
+            "We frequently reuse proven AI solution patterns across different projects to drive innovation."
+        ],
+        "text": "Optional: Describe any challenges your organization faces in adopting new AI deployment patterns or frameworks."
+    }
+}
+
+# Example dimensions + questions + optional text prompt
+survey_questions_old = {
     "Business Domain Understanding": {
         "questions": [
             "Our organization has in-depth domain knowledge where AI will be applied.",
