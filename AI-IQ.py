@@ -3,21 +3,16 @@ import pandas as pd
 import plotly.graph_objects as go
 import os
 from datetime import datetime
+import plotly.io as pio  # For exporting charts as images (optional)
 
 ###########################
 # CONFIG & GLOBALS
 ###########################
 
-# Instead of a hard-coded password, we read from st.secrets.
-# In your secrets.toml (local) or Streamlit Cloud secrets, you have:
-#   [general]
-#   password = "NeuZeit"
-
-# If the user hasn't set "general.password" in secrets, this will raise a KeyError.
-# You can use a get() with default if you want a fallback password.
+# Read password from Streamlit secrets
 PASSWORD = st.secrets["general"]["password"]  
 
-# Scale labels (Strongly Agree -> Strongly Disagree) mapped to 5..1
+# Scale labels mapped to numeric values
 SCALE_LABELS = ["Strongly Agree", "Agree", "Neutral", "Disagree", "Strongly Disagree"]
 SCALE_MAPPING = {
     "Strongly Agree": 5,
@@ -27,6 +22,16 @@ SCALE_MAPPING = {
     "Strongly Disagree": 1
 }
 
+# Revised weights for each response level with negative weights
+WEIGHT_MAPPING = {
+    "Strongly Agree": 1.5,
+    "Agree": 1,
+    "Neutral": 0,
+    "Disagree": -1.5,
+    "Strongly Disagree": -3
+}
+
+# Survey Questions Configuration
 survey_questions = {
     "Strategic Alignment and AI-Driven Innovation": {
         "questions": [
@@ -78,58 +83,6 @@ survey_questions = {
     }
 }
 
-# Example dimensions + questions + optional text prompt
-survey_questions_old = {
-    "Business Domain Understanding": {
-        "questions": [
-            "Our organization has in-depth domain knowledge where AI will be applied.",
-            "We effectively identify & prioritize AI use cases that bring real business value.",
-            "We have a clear understanding of AI’s potential ROI or tangible benefits."
-        ],
-        "text": "Optional: Briefly describe any recent AI project or domain-specific challenge."
-    },
-    "People": {
-        "questions": [
-            "Our Data Science team effectively translates business needs and collaborates with stakeholders.",
-            "Our Data Science team has the necessary technical depth (ML, MLOps, relevant tools).",
-            "Our business stakeholders are willing & able to sponsor and guide AI projects."
-        ],
-        "text": "Optional: Describe any communication or alignment challenges among teams."
-    },
-    "Process": {
-        "questions": [
-            "We have a structured, iterative process for conducting AI experiments (POCs) quickly.",
-            "We have a mature process for deploying AI models from pilot to production.",
-            "We have robust monitoring and a clear human-in-the-loop for AI-driven decisions."
-        ],
-        "text": "Optional: Highlight any bottlenecks or pain points in the AI lifecycle."
-    },
-    "Technology": {
-        "questions": [
-            "Our AI tech stack (frameworks, libraries, DevOps/MLOps) is modern and well-integrated.",
-            "We have well-defined standards or governance for AI tools & data usage.",
-            "Our architecture supports ‘plug-and-play’ integration for new AI models."
-        ],
-        "text": "Optional: Note any tech gaps or constraints (legacy systems, cloud limits, etc.)."
-    },
-    "Data": {
-        "questions": [
-            "We have a unified data platform (not many siloed sources).",
-            "Our data sources (structured/unstructured) are well-documented and discoverable.",
-            "We have strong data governance and data quality practices."
-        ],
-        "text": "Optional: If data quality or availability is an issue, explain."
-    },
-    "Patterns": {
-        "questions": [
-            "We understand and leverage common AI deployment patterns (batch, real-time, RAG, etc.).",
-            "We have a clear approach for integrating AI models internally vs. using external services.",
-            "We frequently reuse proven AI solution patterns across projects."
-        ],
-        "text": "Optional: Describe any challenges adopting new AI patterns or frameworks."
-    }
-}
-
 CSV_FILE = "survey_responses.csv"
 LOGO_FILE = "neuzeit_logo.png"
 
@@ -139,9 +92,14 @@ LOGO_FILE = "neuzeit_logo.png"
 
 def load_data(csv_file=CSV_FILE):
     if os.path.exists(csv_file):
-        return pd.read_csv(csv_file)
+        df = pd.read_csv(csv_file)
+        # Ensure RespondentID exists
+        if 'RespondentID' not in df.columns:
+            df.reset_index(inplace=True)
+            df.rename(columns={'index': 'RespondentID'}, inplace=True)
+        return df
     else:
-        columns = ["name", "email", "timestamp", "AI_IQ"]
+        columns = ["RespondentID", "name", "email", "timestamp", "AI_IQ"]
         for dim in survey_questions.keys():
             columns.append(dim + "_score")
         for dim in survey_questions.keys():
@@ -161,6 +119,13 @@ def save_response(name, email, dimension_scores, dimension_texts, ai_iq, csv_fil
     for dim, txt in dimension_texts.items():
         row_dict[dim + "_text_response"] = txt
 
+    # Assign a unique RespondentID
+    if 'RespondentID' in df.columns and not df.empty:
+        new_id = df['RespondentID'].max() + 1
+    else:
+        new_id = 1
+    row_dict["RespondentID"] = new_id
+
     new_df = pd.DataFrame([row_dict])
     df = pd.concat([df, new_df], ignore_index=True)
     df.to_csv(csv_file, index=False)
@@ -169,8 +134,35 @@ def save_response(name, email, dimension_scores, dimension_texts, ai_iq, csv_fil
 # CHART & SCORING LOGIC
 ##########################
 
-def calculate_dimension_score(numeric_answers):
-    return round(sum(numeric_answers) / len(numeric_answers), 2)
+def calculate_weighted_score(numeric_answers, selected_weights):
+    """
+    Calculate the weighted score based on weights only.
+    The score is normalized to a 0-5 scale using the ratio of positive to total contributions.
+    """
+    positive_sum = 0
+    negative_sum = 0
+    for a, w in zip(numeric_answers, selected_weights):
+        if w > 0:
+            positive_sum += a * w
+        elif w < 0:
+            negative_sum += a * abs(w)
+    
+#    st.write(f"Positive Sum: {positive_sum}")
+#    st.write(f"Negative Sum: {negative_sum}")
+    
+    if positive_sum + negative_sum == 0:
+        return 2.5  # Neutral score when there's no impact
+    
+    dimension_score = (positive_sum / (positive_sum + negative_sum)) * 5
+    
+#    st.write(f"Uncapped Dimension Score: {dimension_score}")
+    
+    # Cap the score between 0 and 5
+    dimension_score = max(0, min(dimension_score, 5))
+    
+#    st.write(f"Capped Dimension Score: {dimension_score}")
+    
+    return round(dimension_score, 2)
 
 def create_swimlane_chart(dimension_scores):
     dimensions = list(dimension_scores.keys())
@@ -235,6 +227,22 @@ def create_swimlane_chart(dimension_scores):
     )
     return fig
 
+def determine_ai_iq_level(ai_iq_score):
+    """
+    Determine the AI IQ maturity level based on the weighted AI IQ score.
+    The thresholds can be adjusted as needed.
+    """
+    if ai_iq_score >= 4.5:
+        return "Level 5: Optimizing"
+    elif ai_iq_score >= 3.5:
+        return "Level 4: Innovating"
+    elif ai_iq_score >= 2.5:
+        return "Level 3: Managing"
+    elif ai_iq_score >= 1.5:
+        return "Level 2: Emerging"
+    else:
+        return "Level 1: Initial"
+
 ######################
 # MAIN STREAMLIT APP
 ######################
@@ -254,7 +262,7 @@ def main():
     tab1, tab2 = st.tabs(["Take Survey", "View Results"])
 
     ##########
-    # Tab 1
+    # Tab 1 - Take Survey
     ##########
     with tab1:
         st.subheader("User Information")
@@ -268,30 +276,36 @@ def main():
         for dim, content in survey_questions.items():
             st.subheader(dim)
             numeric_answers = []
+            selected_weights = []
             for question in content["questions"]:
                 selected_label = st.radio(
                     label=question,
                     options=SCALE_LABELS,
-                    index=2  # default to "Neutral"
+                    index=2,  # default to "Neutral"
+                    key=f"{dim}_{question}"  # Unique key to prevent Streamlit warnings
                 )
                 numeric_value = SCALE_MAPPING[selected_label]
+                weight = WEIGHT_MAPPING[selected_label]
                 numeric_answers.append(numeric_value)
+                selected_weights.append(weight)
 
-            # dimension score
-            dim_score = calculate_dimension_score(numeric_answers)
+            # dimension score with weights
+            dim_score = calculate_weighted_score(numeric_answers, selected_weights)
             dimension_scores[dim] = dim_score
 
             # optional text
             text_label = content["text"]
-            text_response = st.text_area(text_label, value="", height=80)
+            text_response = st.text_area(text_label, value="", height=80, key=f"{dim}_text")
             dimension_texts[dim] = text_response
 
         if st.button("Calculate AI IQ & Submit"):
             all_scores = list(dimension_scores.values())
             ai_iq = round(sum(all_scores) / len(all_scores), 2)
+            ai_iq_level = determine_ai_iq_level(ai_iq)
 
             st.write("### Results")
             st.write(f"**Your AI IQ Score:** {ai_iq} (out of 5)")
+            st.write(f"**Maturity Level:** {ai_iq_level}")
             fig = create_swimlane_chart(dimension_scores)
             st.plotly_chart(fig, use_container_width=True)
 
@@ -302,7 +316,7 @@ def main():
                 st.warning("Provide both name and email if you want your results saved.")
 
     ##########
-    # Tab 2
+    # Tab 2 - View Results
     ##########
     with tab2:
         entered_password = st.text_input("Enter password to view results", type="password")
@@ -315,6 +329,80 @@ def main():
             else:
                 st.dataframe(df)
 
+                # Add a horizontal line separator for clarity
+                st.markdown("---")
+
+                # Section for Individual Radar Chart Series
+                st.subheader("Individual AI IQ Profiles")
+
+                # Create a multi-select widget to choose respondents to display
+                respondent_options = df.apply(
+                    lambda row: f"Respondent {row['RespondentID']}: {row['name']} (AI IQ: {row['AI_IQ']})",
+                    axis=1
+                ).tolist()
+                selected_respondents = st.multiselect(
+                    "Select Respondents to Display on Radar Chart",
+                    options=respondent_options,
+                    default=respondent_options[:5]  # Default to first 5 respondents
+                )
+
+                # Limit the number of respondents to prevent clutter
+                MAX_RESPONDENTS = 10
+                if len(selected_respondents) > MAX_RESPONDENTS:
+                    st.warning(f"Please select up to {MAX_RESPONDENTS} respondents to display.")
+                    selected_respondents = selected_respondents[:MAX_RESPONDENTS]
+
+                if selected_respondents:
+                    # Extract RespondentIDs based on selection
+                    selected_ids = [int(option.split(":")[0].split()[-1]) for option in selected_respondents]
+                    selected_df = df[df['RespondentID'].isin(selected_ids)]
+
+                    # Prepare data for radar chart
+                    radar_fig = go.Figure()
+
+                    for _, row in selected_df.iterrows():
+                        scores = [row[f"{dim}_score"] for dim in survey_questions.keys()]
+                        radar_fig.add_trace(go.Scatterpolar(
+                            r=scores,
+                            theta=list(survey_questions.keys()),
+                            fill='toself',
+                            name=f"{row['name']} (AI IQ: {row['AI_IQ']})"
+                        ))
+
+                    radar_fig.update_layout(
+                        polar=dict(
+                            radialaxis=dict(
+                                visible=True,
+                                range=[1,5],
+                                tickvals=[1,2,3,4,5]
+                            )
+                        ),
+                        showlegend=True,
+                        title="Individual AI IQ Profiles"
+                    )
+
+                    st.plotly_chart(radar_fig, use_container_width=True)
+
+                    # Optional: Add a download button for the radar chart
+                    radar_fig_bytes = pio.to_image(radar_fig, format="png")
+                    st.download_button(
+                        label="Download Radar Chart as PNG",
+                        data=radar_fig_bytes,
+                        file_name="individual_ai_iq_radar_chart.png",
+                        mime="image/png"
+                    )
+                else:
+                    st.write("No respondents selected for the radar chart.")
+
+                # Display Aggregate AI IQ Score
+                st.markdown("---")
+                st.subheader("Aggregate AI IQ Score")
+                average_ai_iq = df["AI_IQ"].mean()
+                ai_iq_level = determine_ai_iq_level(average_ai_iq)
+                st.metric("Average AI IQ", f"{average_ai_iq:.2f} / 5")
+                st.write(f"**Overall Maturity Level:** {ai_iq_level}")
+
+                # Section to show individual submissions
                 st.write("### Show/Hide Individual Submissions")
                 for i, row in df.iterrows():
                     show_row = st.checkbox(
@@ -334,10 +422,13 @@ def main():
                         st.markdown(f"**Email:** {row['email']}")
                         st.markdown(f"**Timestamp:** {row['timestamp']}")
                         st.markdown(f"**AI IQ:** {row['AI_IQ']}")
+                        st.markdown(f"**Maturity Level:** {determine_ai_iq_level(row['AI_IQ'])}")
 
+                        # Individual Swimlane Chart
                         fig_row = create_swimlane_chart(row_scores)
                         st.plotly_chart(fig_row, use_container_width=True)
 
+                        # Expandable section for text responses
                         with st.expander("Dimension Text Responses", expanded=False):
                             for dim in survey_questions.keys():
                                 txt = row_texts[dim]
