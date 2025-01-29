@@ -1,2 +1,4 @@
 # Ignore all contents in the .streamlit/ folder
 .streamlit/
+# Ignore devcontainer folder
+devcontainer/
