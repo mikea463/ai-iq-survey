@@ -243,6 +243,15 @@ def determine_ai_iq_level(ai_iq_score):
     else:
         return "Level 1: Initial"
 
+def delete_response(respondent_id, csv_file=CSV_FILE):
+    """ Delete a specific respondent's record from the CSV file. """
+    df = load_data(csv_file)
+
+    # Ensure RespondentID column exists
+    if "RespondentID" in df.columns:
+        df = df[df["RespondentID"] != respondent_id]  # Filter out the row with the given ID
+        df.to_csv(csv_file, index=False)  # Save the updated data
+
 ######################
 # MAIN STREAMLIT APP
 ######################
@@ -439,6 +448,11 @@ def main():
                                         st.markdown(f"**{dim}:** (No additional comments)")
                                 else:
                                     st.markdown(f"**{dim}:** (Not a string)")
+                                     # DELETE BUTTON
+                        if st.button(f"🗑️ Delete Evaluation {respondent_id}", key=f"delete_{respondent_id}"):
+                            delete_response(respondent_id)
+                            st.success(f"Deleted evaluation for {name}. Please refresh to see changes.")
+                            st.experimental_rerun()  # Refresh the app to reflect changes
 
         else:
             st.error("Access denied. Please enter the correct password.")

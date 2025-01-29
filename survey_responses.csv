@@ -1,13 +1,1 @@
 RespondentID,name,email,timestamp,AI_IQ,Business Domain Understanding_score,People_score,Process_score,Technology_score,Data_score,Patterns_score,Business Domain Understanding_text_response,People_text_response,Process_text_response,Technology_text_response,Data_text_response,Patterns_text_response,Strategic Alignment and AI-Driven Innovation_score,Cultural Integration and Continuous Learning_score,Advanced AI Capabilities and Infrastructure_score,Data Management and Utilization_score,"Ethics, Governance, and Responsible AI_score",AI Deployment Patterns and Innovation_score,Strategic Alignment and AI-Driven Innovation_text_response,Cultural Integration and Continuous Learning_text_response,Advanced AI Capabilities and Infrastructure_text_response,Data Management and Utilization_text_response,"Ethics, Governance, and Responsible AI_text_response",AI Deployment Patterns and Innovation_text_response
-0,a,a,2025-01-28 13:45:34,3.22,,,,,,,,,,,,,3.0,3.0,3.0,3.0,2.33,5.0,,,,,,
-1,Mike,mike@neuzeitgroup.com,2025-01-29 07:29:54,3.5,,,,,,,,,,,,,4.0,2.0,3.33,4.67,4.33,2.67,some text,,,,,
-2,a,alexandra@neuzeitgroup.com,2025-01-29 07:49:37,3.0,,,,,,,,,,,,,3.0,3.0,3.0,3.0,1.0,5.0,,,,,,
-3,Alexandra Alvarez,alexandra@neuzeitgroup.com,2025-01-29 07:53:12,2.95,,,,,,,,,,,,,5.0,2.33,1.67,2.67,3.0,3.0,,,,,,
-4,Alexandra Alvarez,alexandra@neuzeitgroup.com,2025-01-29 07:53:13,2.95,,,,,,,,,,,,,5.0,2.33,1.67,2.67,3.0,3.0,,,,,,
-5,Mike,sallay@sal.com,2025-01-29 08:03:33,3.33,,,,,,,,,,,,,5.0,3.0,3.0,3.0,3.0,3.0,,,,,,
-6,tim,tim@neuzeitgroup.com,2025-01-29 10:03:01,3.63,,,,,,,,,,,,,4.38,4.38,3.6,3.4,3.0,3.0,,,,,,
-7,bob,bob,2025-01-29 10:15:44,4.0,,,,,,,,,,,,,4.0,4.0,4.0,4.0,4.0,4.0,,,,,,
-8,Mike,sallay@sal.com,2025-01-29 10:24:01,4.0,,,,,,,,,,,,,4.0,4.0,4.0,4.0,4.0,4.0,,,,,,
-9,Mike,sallay@sal.com,2025-01-29 10:24:22,4.0,,,,,,,,,,,,,4.0,4.0,4.0,4.0,4.0,4.0,,,,,,
-10,Mike,sallay@sal.com,2025-01-29 10:24:34,4.0,,,,,,,,,,,,,4.0,4.0,4.0,4.0,4.0,4.0,,,,,,
-11,Mike,sallay@sal.com,2025-01-29 10:57:53,2.92,,,,,,,,,,,,,2.5,2.5,2.5,2.5,2.5,5.0,,,,,,
